@@ -43,6 +43,7 @@ type Kill struct	{
 type Scorer struct	{
 	Name string
 	Score int64
+	Q int64
 }
 
 type Total struct	{
@@ -75,7 +76,6 @@ func getDB(name string) (db *mgo.Database, session *mgo.Session){
 
 func GetKills(hunter string, species string, limit int, year string)	(*[]Kill) {
 
-	//udatemin := 1435708800 // TODO: SORT THIS CRAP OUT
 	y := GetYear(year)
 	
 	udatemin := y.Start
@@ -104,15 +104,19 @@ func GetKills(hunter string, species string, limit int, year string)	(*[]Kill) {
 }
 
 
-func GetTimeLine(hunter string, species string, limit int) (*[]TimeLineNode) {
+func GetTimeLine(hunter string, species string, limit int, year string) (*[]TimeLineNode) {
 
-        udatemin := 1435708800 // TODO: SORT THIS CRAP OUT
+	y := GetYear(year)
+
+        udatemin := y.Start
+        udatemax := y.End
+
         db, session := getDB("lpj")
         defer session.Close()
 
         k := []Kill{}
 
-        search := bson.M{"udate":bson.M{"$gt":udatemin}}
+	search := bson.M{"udate":bson.M{"$gt":udatemin, "$lt":udatemax}}
 
         if hunter != "" && hunter != "all" {
                 search["hunter"] = hunter
@@ -202,6 +206,55 @@ func GetTotals(hunter string, species string, year string)(*[]Total)	{
 	return &t
 
 }
+
+func GetTopTenForSpecies(year string, species string)(*[10]Scorer) {
+
+        y := GetYear(year)
+
+        udatemin := y.Start
+        udatemax := y.End
+
+        db, session := getDB("lpj")
+        defer session.Close()
+
+        s := [10]Scorer{}
+        k := []Kill{}
+
+        var m = make(map[string]int64)
+
+        search := bson.M{"udate":bson.M{"$gt":udatemin, "$lt":udatemax}, "animal.id": species}
+
+        db.C("kills").Find(search).All(&k)
+
+        for _, kill := range k  {
+                q,_ := strconv.Atoi(kill.Q)
+                m[kill.Hunter] += (int64(q) * kill.Animal.Points)
+        }
+
+        var highest int64 = 0
+
+        for i := 0; i < 10; i++ {
+
+                if len(m)> 0    {
+                        t := Scorer{}
+                        highest = 0
+                        for name, score := range m      {
+                                if score != 0   {
+                                        if score > highest      {
+                                                t.Name = name
+                                                t.Score = score
+                                                highest = score
+                                        }
+                                }
+                        }
+                        s[i] = t
+                        delete(m, t.Name)
+                }
+        }
+
+        return &s
+}
+
 
 func GetTopTen(year string)(*[10]Scorer) {
 
