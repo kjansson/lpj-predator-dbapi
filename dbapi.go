@@ -323,7 +323,7 @@ func GetPredators() (*[]Predator) {
 
         p := []Predator{}
 
-        db.C("predator").Find(nil).Sort("name").All(&p)
+        db.C("predator").Find(nil).Sort("realname").All(&p)
         return &p
 }
 
@@ -334,7 +334,7 @@ func GetAnimals() (*[]Animal) {
 
         p := []Animal{}
 
-        db.C("animal").Find(nil).Sort("name").All(&p)
+        db.C("animal").Find(nil).Sort("realname").All(&p)
         return &p
 }
 
